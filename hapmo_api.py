@@ -12,7 +12,7 @@ app = FastAPI(title="Hapmo Backend API")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -134,3 +134,4 @@ def search_product(q: str):
     conn.close()
     
     return final_response
+
