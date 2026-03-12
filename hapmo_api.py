@@ -65,22 +65,48 @@ def get_amazon_data(page, search_query):
         return {"store": "Amazon", "title": "Error fetching", "price": "N/A", "price_int": 9999999, "link": url}
 
 def get_flipkart_data(page, search_query):
-    page.route("**/*", block_heavy_resources) # Apply memory saver
+    page.route("**/*", block_heavy_resources)
     url = f"https://www.flipkart.com/search?q={search_query.replace(' ', '+')}"
+
     try:
-        page.goto(url, timeout=15000)
-        page.wait_for_selector("div[data-id]", timeout=10000)
-        first_product = page.locator("div[data-id]").first
-        image_locator = first_product.locator("img").first
-        title = image_locator.get_attribute("alt") if image_locator.count() > 0 else "Not found"
-        
+        page.goto(url, timeout=20000)
+
+        # Close login popup if it appears
+        try:
+            page.locator("button:has-text('✕')").click(timeout=3000)
+        except:
+            pass
+
+        # Wait for product cards
+        page.wait_for_selector("div._1AtVbE", timeout=10000)
+
+        products = page.locator("div._1AtVbE")
+        first_product = products.nth(1)
+
+        title_element = first_product.locator("a").first
+        title = title_element.inner_text() if title_element.count() > 0 else "Not found"
+
         product_text = first_product.inner_text()
         price_match = re.search(r'₹[0-9,]+', product_text)
         price_str = price_match.group(0) if price_match else "0"
-        
-        return {"store": "Flipkart", "title": title, "price": price_str, "price_int": clean_price(price_str), "link": url}
-    except Exception:
-        return {"store": "Flipkart", "title": "Error fetching", "price": "N/A", "price_int": 9999999, "link": url}
+
+        return {
+            "store": "Flipkart",
+            "title": title,
+            "price": price_str,
+            "price_int": clean_price(price_str),
+            "link": url
+        }
+
+    except Exception as e:
+        print("Flipkart Error:", e)
+        return {
+            "store": "Flipkart",
+            "title": "Error fetching",
+            "price": "N/A",
+            "price_int": 9999999,
+            "link": url
+        }
 
 @app.get("/search")
 def search_product(q: str):
@@ -134,4 +160,5 @@ def search_product(q: str):
     conn.close()
     
     return final_response
+
 
