@@ -71,7 +71,7 @@
 
             try {
                 // 2. Call the Python Backend API
-                const response = await fetch(`http://127.0.0.1:8000/search?q=${encodeURIComponent(query)}`);
+                const response = await fetch(`https://hapmo-core-engine.onrender.com/search?q=${encodeURIComponent(query)}`);
                 const result = await response.json();
 
                 // 3. Hide loader, show results
@@ -120,4 +120,5 @@
 </body>
 
 </html>
+
 
