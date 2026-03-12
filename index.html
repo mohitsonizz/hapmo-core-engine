@@ -109,12 +109,14 @@
                     document.getElementById('cardsContainer').innerHTML += cardHTML;
                 });
 
-            } catch (error) {
+           } catch (error) {
                 console.error("API Error:", error);
-                alert("Make sure your Python API server is running in the terminal!");
+                // Updated Production Error Message
+                alert("Hapmo Engine is waking up or the search took too long. Please try again in 30 seconds!");
                 document.getElementById('loadingSection').classList.add('hidden');
             }
         }
     </script>
 </body>
+
 </html>
