@@ -204,8 +204,14 @@ def search_product(q: str):
             ]
         )
 
+        # Bot ko aur zyada "Human" banate hain
         context = browser.new_context(
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36"
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            viewport={"width": 1920, "height": 1080}, # Badi screen size
+            extra_http_headers={
+                "Accept-Language": "en-US,en;q=0.9,hi;q=0.8", # Normal language settings
+                "Referer": "https://www.google.com/" # Flipkart ko lagega hum Google search karke aaye hain
+            }
         )
 
         amazon_page = context.new_page()
@@ -248,3 +254,4 @@ def search_product(q: str):
     conn.close()
 
     return final_response
+
