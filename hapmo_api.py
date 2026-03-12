@@ -98,7 +98,7 @@ def search_product(q: str):
     print(f"🐌 CACHE MISS: Scraping live internet for '{query_clean}'...")
     
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch(headless=True, args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"])
         context = browser.new_context()
         amazon_page = context.new_page()
         flipkart_page = context.new_page()
@@ -126,4 +126,5 @@ def search_product(q: str):
     conn.commit()
     conn.close()
     
+
     return final_response
