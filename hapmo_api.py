@@ -17,11 +17,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- DATABASE SETUP (Built-in SQLite) ---
 def init_db():
     conn = sqlite3.connect("hapmo_cache.db")
     cursor = conn.cursor()
-    # Create a table to store search results
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS search_cache (
             query TEXT PRIMARY KEY,
@@ -32,7 +30,7 @@ def init_db():
     conn.commit()
     conn.close()
 
-init_db() # Run database setup on startup
+init_db()
 
 def clean_price(price_str):
     try:
@@ -41,7 +39,15 @@ def clean_price(price_str):
     except ValueError:
         return 9999999
 
+# MEMORY SAVER TRICK: Block images and styles
+def block_heavy_resources(route):
+    if route.request.resource_type in ["image", "stylesheet", "media", "font", "other"]:
+        route.abort()
+    else:
+        route.continue_()
+
 def get_amazon_data(page, search_query):
+    page.route("**/*", block_heavy_resources) # Apply memory saver
     url = f"https://www.amazon.in/s?k={search_query.replace(' ', '+')}"
     try:
         page.goto(url, timeout=15000)
@@ -59,6 +65,7 @@ def get_amazon_data(page, search_query):
         return {"store": "Amazon", "title": "Error fetching", "price": "N/A", "price_int": 9999999, "link": url}
 
 def get_flipkart_data(page, search_query):
+    page.route("**/*", block_heavy_resources) # Apply memory saver
     url = f"https://www.flipkart.com/search?q={search_query.replace(' ', '+')}"
     try:
         page.goto(url, timeout=15000)
@@ -77,10 +84,8 @@ def get_flipkart_data(page, search_query):
 
 @app.get("/search")
 def search_product(q: str):
-    # Normalize the query (lowercase, remove extra spaces) to ensure matching
     query_clean = q.strip().lower()
     
-    # 1. CHECK DATABASE FIRST (The Speed Boost)
     conn = sqlite3.connect("hapmo_cache.db")
     cursor = conn.cursor()
     cursor.execute("SELECT result_json, timestamp FROM search_cache WHERE query=?", (query_clean,))
@@ -88,23 +93,26 @@ def search_product(q: str):
     
     if row:
         saved_time = datetime.fromisoformat(row[1])
-        # If the data is less than 12 hours old, return it instantly!
         if datetime.now() - saved_time < timedelta(hours=12):
-            print(f"⚡ FAST CACHE HIT: Returning saved data for '{query_clean}' in 0.1 seconds!")
             conn.close()
             return json.loads(row[0])
             
-    # 2. IF NOT IN DATABASE, SCRAPE THE WEB (Takes 15 seconds)
-    print(f"🐌 CACHE MISS: Scraping live internet for '{query_clean}'...")
-    
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True, args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"])
+        # EXTREME MEMORY SAVING ARGUMENTS ADDED HERE
+        browser = p.chromium.launch(
+            headless=True, 
+            args=["--no-sandbox", "--disable-dev-shm-usage", "--single-process", "--disable-gpu"]
+        )
         context = browser.new_context()
-        amazon_page = context.new_page()
-        flipkart_page = context.new_page()
         
+        # Open pages sequentially instead of simultaneously to save memory
+        amazon_page = context.new_page()
         amazon_result = get_amazon_data(amazon_page, q)
+        amazon_page.close() # Close immediately to free RAM
+        
+        flipkart_page = context.new_page()
         flipkart_result = get_flipkart_data(flipkart_page, q)
+        flipkart_page.close() # Close immediately
         
         browser.close()
         
@@ -118,7 +126,6 @@ def search_product(q: str):
         "data": results
     }
     
-    # 3. SAVE THE NEW DATA TO DATABASE FOR NEXT TIME
     cursor.execute('''
         INSERT OR REPLACE INTO search_cache (query, result_json, timestamp) 
         VALUES (?, ?, ?)
@@ -126,5 +133,4 @@ def search_product(q: str):
     conn.commit()
     conn.close()
     
-
     return final_response
