@@ -112,7 +112,7 @@
            } catch (error) {
                 console.error("API Error:", error);
                 // Updated Production Error Message
-                alert("Hapmo Engine is waking up or the search took too long. Please try again in 30 seconds!");
+                alert("Technical Error: " + error.message);
                 document.getElementById('loadingSection').classList.add('hidden');
             }
         }
@@ -120,3 +120,4 @@
 </body>
 
 </html>
+
